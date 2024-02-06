@@ -6,6 +6,7 @@ import os
 
 # Streamlit UI
 st.title('TD Snap pageset tools')
+st.sidebar.write("Version: 1.0.0")
 
 # File uploader for the database file
 db_file = st.file_uploader("Choose a TD Pageset", type=['spb'])
