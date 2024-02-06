@@ -87,11 +87,11 @@ def get_highest_button_id(fname):
     connection = sqlite3.connect(fname)
     crsr = connection.cursor()
     
-    res = crsr.execute("SELECT MAX(Id) as max_items FROM Button")
-    MaxId = int(res.fetchone()[0])
-    
-    res = crsr.execute("SELECT MAX(ElementReferenceId) as max_items FROM Button")
-    MaxRefId = int(res.fetchone()[0])
+    fetch_result = crsr.execute("SELECT MAX(Id) as max_items FROM Button").fetchone()
+    MaxId = 0 if fetch_result[0] is None else int(fetch_result[0])
+
+    fetch_result = crsr.execute("SELECT MAX(ElementReferenceId) as max_items FROM Button").fetchone()
+    MaxRefId = 0 if fetch_result[0] is None else int(fetch_result[0])
 
     # Id, ElementReferenceId
     return MaxId, MaxRefId
