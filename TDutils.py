@@ -2,8 +2,8 @@ import sqlite3
 import uuid
 import os
 import shutil
-from nltk.tokenize import word_tokenize
-import nltk
+# from nltk.tokenize import word_tokenize
+# import nltk
 
 def get_pos_colors():
     # Colours from existing pagesets
@@ -70,39 +70,39 @@ def get_pos_colors():
     return pos_to_color
 
 
-def colour_buttons_by_pos(db_path):
+# def colour_buttons_by_pos(db_path):
 
-    # Connect to the database
-    conn = sqlite3.connect(db_path)
-    cursor = conn.cursor()
+#     # Connect to the database
+#     conn = sqlite3.connect(db_path)
+#     cursor = conn.cursor()
     
-    # Select labels and ElementReferenceId from Button table
-    cursor.execute("SELECT Label, ElementReferenceId FROM Button")
-    buttons = cursor.fetchall()
+#     # Select labels and ElementReferenceId from Button table
+#     cursor.execute("SELECT Label, ElementReferenceId FROM Button")
+#     buttons = cursor.fetchall()
     
-    pos_to_color = get_pos_colors()
+#     pos_to_color = get_pos_colors()
 
-    for label, element_id in buttons:
-        if label is not None:
-            # Get most likely POS tag
-            print(f"label: {label}")
-            pos_tag = nltk.tag.pos_tag([label])
-            print(pos_tag) 
-            if pos_tag is not None:
-                pos_tag = pos_tag[0][1]
-            else:
-                pos_tag = 'unknown'
+#     for label, element_id in buttons:
+#         if label is not None:
+#             # Get most likely POS tag
+#             print(f"label: {label}")
+#             pos_tag = nltk.tag.pos_tag([label])
+#             print(pos_tag) 
+#             if pos_tag is not None:
+#                 pos_tag = pos_tag[0][1]
+#             else:
+#                 pos_tag = 'unknown'
 
-            # Lookup the color, default to 'unknown' if not found
-            color = pos_to_color.get(pos_tag, pos_to_color['unknown'])
+#             # Lookup the color, default to 'unknown' if not found
+#             color = pos_to_color.get(pos_tag, pos_to_color['unknown'])
             
-            # Update the ElementReference table with the determined color
-            update_query = """UPDATE ElementReference SET BackgroundColor = ? WHERE Id = ?"""
-            cursor.execute(update_query, (color, element_id))
+#             # Update the ElementReference table with the determined color
+#             update_query = """UPDATE ElementReference SET BackgroundColor = ? WHERE Id = ?"""
+#             cursor.execute(update_query, (color, element_id))
     
-    # Commit changes and close the connection
-    conn.commit()
-    conn.close()
+#     # Commit changes and close the connection
+#     conn.commit()
+#     conn.close()
 
 def alternate_column_colors(db_path, column_colors):
     # Connect to the SQLite database
