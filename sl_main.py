@@ -1,6 +1,4 @@
 import streamlit as st
-import pandas as pd
-from io import BytesIO
 from TDutils import add_words_inplace
 import sqlite3
 import tempfile
@@ -23,8 +21,7 @@ if st.button('Process Files'):
 
         # Example processing: printing the words
         st.write("Words in the uploaded text file:")
-        st.write(words)
-        st.write(f"first word was {words[0]}")
+        st.write(words)        
         
         # Create a temporary file
         with tempfile.NamedTemporaryFile(delete=False, suffix='.spb') as tmp_file:
