@@ -4,6 +4,38 @@ import os
 import shutil
 
 
+def update_element_colors(db_path, column_colors):
+    # Connect to the SQLite database
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    
+    # Fetch GridPosition and ElementReferenceId from ElementPlacement
+    cursor.execute("SELECT GridPosition, ElementReferenceId FROM ElementPlacement")
+    placements = cursor.fetchall()
+    
+    # Dictionary to hold the new color for each ElementReferenceId
+    color_updates = {}
+    
+    for position, element_ref_id in placements:
+        # Split GridPosition to get column number (assuming "column,row")
+        column = int(position.split(',')[0])
+        
+        # Determine color based on column (cycle through column_colors)
+        color = column_colors[column % len(column_colors)]
+        
+        # Prepare update dictionary
+        color_updates[element_ref_id] = color
+    
+    # Update ElementReference with new colors
+    for element_ref_id, color in color_updates.items():
+        cursor.execute("UPDATE ElementReference SET BackgroundColor = ? WHERE Id = ?",
+                       (color, element_ref_id))
+    
+    # Commit the changes and close the connection
+    conn.commit()
+    conn.close()
+
+
 def update_background_color(new_color, database):
     """
     Update the BackgroundColor column in the ElementReference table.
