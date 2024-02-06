@@ -6,7 +6,6 @@ import os
 
 # Streamlit UI
 st.title('TD Snap pageset tools')
-st.header("Version: 1.0.0")
 
 # File uploader for the database file
 db_file = st.file_uploader("Choose a TD Pageset", type=['spb'])
@@ -72,3 +71,7 @@ if st.button('Process File'):
         st.download_button(label="Download Modified Database", data=db_data, file_name=output_filename, mime="application/x-sqlite3")
     else:
         st.error('Please upload both files before processing.')
+
+version="1.0.0"
+footer="""<style>.footer {position: fixed;bottom: 0;width: 100%;background-color: white;text-align: center;} </style><div class="footer"><p>Version """+version+"""</p></div>"""
+st.markdown(footer,unsafe_allow_html=True)
