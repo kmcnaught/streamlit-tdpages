@@ -311,7 +311,7 @@ def get_page_layout_details(db_filename):
 def find_available_positions(db_filename, pageId, ncols, nrows):
     
     # Generate all possible positions
-    npages = 3 
+    npages = 10 
     all_positions = [
             (c, r) for r in range(nrows * npages) for c in range(ncols)
             if not (
@@ -643,3 +643,37 @@ def add_element_reference_with_color(cursor, word, pageId, refId):
         (Id, ElementType, ForegroundColor, BackgroundColor, AudioCueRecordingId, PageId) 
         VALUES (?, ?, ?, ?, ?, ?)
         """, (refId, 0, foregroundColor, backgroundColor, 0, pageId))
+
+    
+def update_page_title(db_path, new_name, page_set_id=1):
+
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()    
+    
+    try:
+        # Update the FriendlyName in PageSetProperties
+        update_query_ps = """UPDATE PageSetProperties SET FriendlyName = ? WHERE ID = ?"""
+        cursor.execute(update_query_ps, (new_name, page_set_id))
+        
+        # Find page where Title is not 'Dashboard' or 'Message Bar'        
+        select_query = """SELECT Title FROM Page WHERE Title NOT IN ('Dashboard', 'Message Bar')"""
+        cursor.execute(select_query)
+        rows = cursor.fetchall()
+                        
+        if len(rows) == 1:
+            # Update the Title if exactly one row is found
+            old_title = rows[0][0]
+            update_query = """UPDATE Page SET Title = ? WHERE Title = ?"""
+            cursor.execute(update_query, (new_name, old_title))
+        else:
+            print("Error: More than one page found, can't change title")
+        
+        # Commit the changes to the database
+        conn.commit()
+        print("FriendlyName and Title updated successfully.")
+    except sqlite3.Error as error:
+        print("Failed to update FriendlyName and Title in sqlite table", error)
+    finally:
+        # Close the cursor and connection to clean up
+        cursor.close()
+        conn.close()

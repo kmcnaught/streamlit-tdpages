@@ -19,6 +19,16 @@ db_file = st.file_uploader("Choose a blank TD Pageset to use", type=['spb'])
 # File uploader for the text file containing words
 text_file = st.file_uploader("Choose a Text File with Word List", type=['txt'])
 
+# Create a checkbox that defaults to True
+update_title = st.checkbox('Update title', value=True)
+
+# Check if a file has been uploaded
+if text_file is not None and update_title:
+    # Extract the file name without extension
+    file_name, file_extension = os.path.splitext(text_file.name)
+    
+    # Display the filename in a text input field, pre-filled with the file name (without extension)
+    file_name_input = st.text_input("New pageset name:", value=file_name)    
 
 def add_words_alphabetised(db_empty_path, words_and_symbols, include_letter_cells=True):
     
@@ -95,8 +105,7 @@ def add_words_alphabetised(db_empty_path, words_and_symbols, include_letter_cell
         raise e
     finally:                  
         # Close connections
-        conn_empty.close()
-        
+        conn_empty.close()    
 
 # Button to trigger processing after files are selected
 if st.button('Process Files'):
@@ -122,6 +131,10 @@ if st.button('Process Files'):
         # Add all alphabetised and colorised buttons        
         add_words_alphabetised(tmp_file_path, words_and_symbols)
 
+        # Update the page title
+        if update_title:
+            update_page_title(tmp_file_path, file_name_input)
+
         # Update timestamps to make sure changes are registered
         update_timestamps(tmp_file_path)
 
@@ -133,6 +146,10 @@ if st.button('Process Files'):
         os.unlink(tmp_file_path)
         
         # Make the modified database available for download
-        st.download_button(label="Download Modified Database", data=db_data, file_name="modified.spb", mime="application/x-sqlite3")
+        dl_filename = "modified.spb"
+        if update_title:
+            dl_filename = file_name_input + ".spb"
+
+        st.download_button(label="Download Modified Database", data=db_data, file_name=dl_filename, mime="application/x-sqlite3")
     else:
         st.error('Please upload empty file and wordlist before processing.')
