@@ -509,6 +509,40 @@ def find_symbol_ids(words):
     
     return output
 
+def change_home_id(conn):
+    # make sure the "Page Id" of the home button matches a real page
+    # (it might not always be the same as in the reference)
+    cursor = conn.cursor()
+
+    # Get the ElementReferenceId for the "Home" button
+    cursor.execute("SELECT ElementReferenceId FROM Button WHERE Label = 'Home'")
+    element_reference_id = cursor.fetchone()
+    if element_reference_id:
+        element_reference_id = element_reference_id[0]
+    else:
+        print("No 'Home' button found.")
+        return
+
+    # Find the new PageId from the Page table
+    cursor.execute("""
+        SELECT Id FROM Page 
+        WHERE Title NOT IN ('Message Bar', 'Dashboard')
+        LIMIT 1
+    """)
+    new_page_id = cursor.fetchone()
+    if new_page_id:
+        new_page_id = new_page_id[0]
+    else:
+        print("No suitable new PageId found.")
+        return
+
+    # Update the PageId in the ElementReference table
+    cursor.execute("""
+        UPDATE ElementReference
+        SET PageId = ?
+        WHERE Id = ?
+    """, (new_page_id, element_reference_id))
+
 
 def add_home_button(pageset_db_filename, reference_db_filename):
     
@@ -533,6 +567,9 @@ def add_home_button(pageset_db_filename, reference_db_filename):
         conn_pageset.execute("INSERT INTO ElementReference SELECT * FROM ref_db.ElementReference")
         conn_pageset.execute("INSERT INTO ElementPlacement SELECT * FROM ref_db.ElementPlacement")
         conn_pageset.execute("INSERT INTO CommandSequence SELECT * FROM ref_db.CommandSequence")
+
+        # Change the button's Page ID
+        change_home_id(conn_pageset)
 
         # Commit the changes
         conn_pageset.commit()
