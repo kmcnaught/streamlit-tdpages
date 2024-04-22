@@ -536,10 +536,17 @@ def change_home_id(conn):
         print("No suitable new PageId found.")
         return
 
-    # Update the PageId in the ElementReference table
+    # Update the PageId in the ElementReference and ElementPlacement tables
     cursor.execute("""
         UPDATE ElementReference
         SET PageId = ?
+        WHERE Id = ?
+    """, (new_page_id, element_reference_id))
+
+    # fixme: technically PageLayoutId here might not match PageId before, but in practise it seems to
+    cursor.execute("""
+        UPDATE ElementPlacement
+        SET PageLayoutId = ?
         WHERE Id = ?
     """, (new_page_id, element_reference_id))
 
