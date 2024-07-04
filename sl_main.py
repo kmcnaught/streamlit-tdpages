@@ -38,7 +38,7 @@ if text_file is not None and update_title:
     # Display the filename in a text input field, pre-filled with the file name (without extension)
     file_name_input = st.text_input("New pageset name:", value=file_name)    
 
-def add_words_alphabetised(db_empty_path, words_and_symbols, include_letter_cells=True):
+def add_words_alphabetised(db_empty_path, words_and_symbols, messages=None, include_letter_cells=True):
     
     try:
         pageId, (num_columns, num_rows) = get_page_layout_details(db_empty_path)
@@ -92,8 +92,10 @@ def add_words_alphabetised(db_empty_path, words_and_symbols, include_letter_cell
             #########################################
             # Now add a button for the current word #   
             #########################################
-
-            add_button(cursor_empty, next_id, next_ref_id, word, symbol)
+            message = None
+            if messages is not None:
+                message = messages[i]
+            add_button(cursor_empty, next_id, next_ref_id, word, symbol, message)
             add_command_speak_message(cursor_empty, next_id)
             add_element_reference_with_color(cursor_empty, word, pageId, next_ref_id)
             add_button_placement(cursor_empty, pageId, next_ref_id, available_positions[pos_i])
@@ -115,6 +117,31 @@ def add_words_alphabetised(db_empty_path, words_and_symbols, include_letter_cell
         # Close connections
         conn_empty.close()    
 
+def split_words_messages(words):
+    # Initialize empty lists for words and messages
+    words_list = []
+    messages_list = []
+
+    for word in words:
+        # Try to split the word by the pipe character "|"
+        parts = word.split("|", maxsplit=1)
+        
+        # Check if the split was successful and has at least two parts
+        if len(parts) > 1:
+            # The first part is considered the word, the second part is considered the message
+            word_part = parts[0]
+            message_part = parts[1].strip()  # Remove leading/trailing whitespace
+        else:
+            # If the split wasn't successful or there's only one part, use the whole word as both word and message
+            word_part = word
+            message_part = word
+        
+        # Append the word and message to their respective lists
+        words_list.append(word_part)
+        messages_list.append(message_part)
+
+    return words_list, messages_list
+
 # Button to trigger processing after files are selected
 if st.button('Process Files'):
     if db_file is not None and text_file is not None:
@@ -122,6 +149,12 @@ if st.button('Process Files'):
         words = text_file.getvalue().decode('utf-8-sig').splitlines()      
         words = remove_plural_duplicates(words)
         words.sort(key=str.casefold)
+
+        # split messages if present
+        messages = None
+        if different_labels:
+            words, messages = split_words_messages(words)
+
         words_and_symbols = find_symbol_ids(words)
         num_symbols = sum(1 for _, symbol in words_and_symbols if symbol is not None)
 
@@ -137,7 +170,7 @@ if st.button('Process Files'):
         add_home_button(tmp_file_path, get_static_path('home_button_ref.spb'))
 
         # Add all alphabetised and colorised buttons        
-        add_words_alphabetised(tmp_file_path, words_and_symbols)
+        add_words_alphabetised(tmp_file_path, words_and_symbols, messages)
 
         # Update the page title
         if update_title:

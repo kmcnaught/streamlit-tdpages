@@ -151,55 +151,58 @@ def add_button_placement(cursor, pageId, elementRefId, position):
                 """
     cursor.execute(cmd)
 
-def add_button(fname, pageId, label, elementId, elementRefId, position):
+# def add_button(fname, pageId, label, elementId, elementRefId, position, differentMessage=None):
 
-    connection = sqlite3.connect(fname)
-    crsr = connection.cursor()    
+#     connection = sqlite3.connect(fname)
+#     crsr = connection.cursor()    
+    
+#     # use same label + message, or a different (usually extended) message    
+#     message = differentMessage if differentMessage is not None else label
 
-    try: 
-        # Add button         
-        cmd = f"""INSERT INTO Button 
-          (Id, Label, ImageOwnership, BorderColor, BorderThickness, LabelOwnership, CommandFlags, ContentType, UniqueId, ElementReferenceId, ActiveContentType, LibrarySymbolId, PageSetImageId, SymbolColorDataId, MessageRecordingId) 
-          VALUES 
-          ({elementId}, '{label}', '0', '-132102', '0.0', '3', '8', '6', '{str(uuid.uuid1())}', {elementRefId}, '0', '0', '0', '0', '0')"""
+#     try: 
+#         # Add button         
+#         cmd = f"""INSERT INTO Button 
+#           (Id, Label, Message, ImageOwnership, BorderColor, BorderThickness, LabelOwnership, CommandFlags, ContentType, UniqueId, ElementReferenceId, ActiveContentType, LibrarySymbolId, PageSetImageId, SymbolColorDataId, MessageRecordingId) 
+#           VALUES 
+#           ({elementId}, '{label}', '{message}', 0', '-132102', '0.0', '3', '8', '6', '{str(uuid.uuid1())}', {elementRefId}, '0', '0', '0', '0', '0')"""
 
-        #print(cmd)   
-        crsr.execute(cmd)
+#         #print(cmd)   
+#         crsr.execute(cmd)
 
-        # Add associated command sequence
-        content = '\'{"$type":"1","$values":[{"$type":"3","MessageAction":0}]}\'' # this means "speak message" action
-        cmd = f"""
-        INSERT INTO CommandSequence (SerializedCommands, ButtonId)
-        VALUES ({content}, "{elementId}")
-        """
-        crsr.execute(cmd)
+#         # Add associated command sequence
+#         content = '\'{"$type":"1","$values":[{"$type":"3","MessageAction":0}]}\'' # this means "speak message" action
+#         cmd = f"""
+#         INSERT INTO CommandSequence (SerializedCommands, ButtonId)
+#         VALUES ({content}, "{elementId}")
+#         """
+#         crsr.execute(cmd)
         
-        # Add position      
-        c, r = position
+#         # Add position      
+#         c, r = position
         
-        cmd = f"""INSERT INTO ElementPlacement 
-            (GridPosition, GridSpan, Visible, ElementReferenceId, PageLayoutId) 
-            VALUES ('{c},{r}', '1,1', '1', '{elementRefId}', '{pageId}')
-            """
-        crsr.execute(cmd)
+#         cmd = f"""INSERT INTO ElementPlacement 
+#             (GridPosition, GridSpan, Visible, ElementReferenceId, PageLayoutId) 
+#             VALUES ('{c},{r}', '1,1', '1', '{elementRefId}', '{pageId}')
+#             """
+#         crsr.execute(cmd)
 
-        # Add entry to ElementReference
-        cmd = f"""
-            INSERT INTO ElementReference 
-            (Id, ElementType, ForegroundColor, BackgroundColor, AudioCueRecordingId, PageId) 
-            VALUES ('{elementRefId}', '0', '-14934754', '-132102', '0', '{pageId}')
-            """
-        crsr.execute(cmd)
+#         # Add entry to ElementReference
+#         cmd = f"""
+#             INSERT INTO ElementReference 
+#             (Id, ElementType, ForegroundColor, BackgroundColor, AudioCueRecordingId, PageId) 
+#             VALUES ('{elementRefId}', '0', '-14934754', '-132102', '0', '{pageId}')
+#             """
+#         crsr.execute(cmd)
 
-    except Exception as e:
-        print("The error raised is: ", e)
+#     except Exception as e:
+#         print("The error raised is: ", e)
         
-    finally:
-        # Ensure the database connection is closed even if an error occurs
-        if connection:            
-            connection.commit()
-            connection.close()
-            print("The SQLite connection is closed.")
+#     finally:
+#         # Ensure the database connection is closed even if an error occurs
+#         if connection:            
+#             connection.commit()
+#             connection.close()
+#             print("The SQLite connection is closed.")
 
 def get_highest_button_id(fname):
     connection = sqlite3.connect(fname)
@@ -650,19 +653,19 @@ def add_command_speak_message(cursor, buttonId):
             """
     cursor.execute(cmd)
 
-def add_button(cursor, buttonId, refId, label, symbol):
+def add_button(cursor, buttonId, refId, label, symbol, differentMessage=None):
     
-    #i am here - trying to make generic method to use from both places. I think i was a bit inconsistent with the 'ownership' columns
-    #tried to fix it, but the images aren't showing up for letter keys
+    # use same label + message, or a different (usually extended) message    
+    message = differentMessage if differentMessage is not None else label
     
     label_ownership = 0 if label is None else 3
     image_ownership = 0 if symbol is None else 3
     
     new_uuid = str(uuid.uuid1())
     cursor.execute("""
-                INSERT INTO Button (Id, Label, ImageOwnership, BorderColor, BorderThickness, LabelOwnership, CommandFlags, ContentType, UniqueId, ElementReferenceId, ActiveContentType, LibrarySymbolId, PageSetImageId, SymbolColorDataId, MessageRecordingId)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (buttonId, label, image_ownership, '-132102', 0.0, label_ownership, 8, 6, new_uuid, refId, 0, symbol, 0, 0, 0)    )
+                INSERT INTO Button (Id, Label, Message, ImageOwnership, BorderColor, BorderThickness, LabelOwnership, CommandFlags, ContentType, UniqueId, ElementReferenceId, ActiveContentType, LibrarySymbolId, PageSetImageId, SymbolColorDataId, MessageRecordingId)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (buttonId, label, differentMessage, image_ownership, '-132102', 0.0, label_ownership, 8, 6, new_uuid, refId, 0, symbol, 0, 0, 0)    )
 
 
 def add_element_reference_with_color(cursor, word, pageId, refId):
