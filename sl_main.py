@@ -20,7 +20,15 @@ db_file = st.file_uploader("Choose a blank TD Pageset to use", type=['spb'])
 text_file = st.file_uploader("Choose a Text File with Word List", type=['txt'])
 
 # Create a checkbox that defaults to True
+st.write("If this is ticked, the pageset will be named after the words list filename")
 update_title = st.checkbox('Update title', value=True)
+
+st.write("By default we use one line per word or phrase in the text file. " +\
+"If this is ticked, we expect each line as: "+ \
+"\"button label|button message\" " + \
+"e.g. \"name|my name is Kirsty\"")
+
+different_labels = st.checkbox('Use separate labels + messages', value=False)
 
 # Check if a file has been uploaded
 if text_file is not None and update_title:
