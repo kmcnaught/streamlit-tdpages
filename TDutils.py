@@ -519,7 +519,7 @@ def find_symbol_ids(words):
     
     return output
 
-def change_home_id(conn):
+def change_home_id(conn, pageId, layouts):
     # make sure the "Page Id" of the home button matches a real page
     # (it might not always be the same as in the reference)
     cursor = conn.cursor()
@@ -533,43 +533,70 @@ def change_home_id(conn):
         print("No 'Home' button found.")
         return
 
-    # Find the new PageId from the Page table
-    cursor.execute("""
-        SELECT Id FROM Page 
-        WHERE Title NOT IN ('Message Bar', 'Dashboard')
-        LIMIT 1
-    """)
-    new_page_id = cursor.fetchone()
-    if new_page_id:
-        new_page_id = new_page_id[0]
-    else:
-        print("No suitable new PageId found.")
-        return
-
     # Update the PageId in the ElementReference and ElementPlacement tables
     cursor.execute("""
         UPDATE ElementReference
         SET PageId = ?
         WHERE Id = ?
-    """, (new_page_id, element_reference_id))
+    """, (pageId, element_reference_id))
 
-    # fixme: technically PageLayoutId here might not match PageId before, but in practise it seems to
+    # For ElementPlacement we need to:
+    # - make a copy of the existing row for every page layout present
+    # - update the PageLayoutId
+    # - remove the original row
+
+    # Fetch the existing row from ElementPlacement table
     cursor.execute("""
-        UPDATE ElementPlacement
-        SET PageLayoutId = ?
-        WHERE Id = ?
-    """, (new_page_id, element_reference_id))
+        SELECT * FROM ElementPlacement WHERE ElementReferenceId = ?
+    """, (element_reference_id,))
+    existing_row = cursor.fetchone()
+
+    if not existing_row:
+        print("No matching row found in ElementPlacement.")
+        return
+
+    # Get the column names for ElementPlacement table
+    cursor.execute("PRAGMA table_info(ElementPlacement)")
+    columns = cursor.fetchall()
+    column_names = [col[1] for col in columns]
+    
+    # Get the actual Id of the existing row
+    existing_row_id = existing_row[column_names.index('Id')]
+
+    # Get the column names for ElementPlacement table
+    cursor.execute("PRAGMA table_info(ElementPlacement)")
+    columns = cursor.fetchall()
+    column_names = [col[1] for col in columns]
+
+    # Duplicate the row for each layout and update PageLayoutId
+    for (pageLayoutId, num_columns, num_rows) in layouts:
+        # Create a new row based on the existing row
+        new_row = list(existing_row)
+        # Update the PageLayoutId in the new row
+        new_row[column_names.index('PageLayoutId')] = pageLayoutId
+        # Remove the Id to let SQLite auto-generate a new one
+        new_row[column_names.index('Id')] = None
+
+        # Insert the new row into the ElementPlacement table
+        cursor.execute(f"""
+            INSERT INTO ElementPlacement ({', '.join(column_names)})
+            VALUES ({', '.join(['?' for _ in column_names])})
+        """, new_row)
+
+    # Remove the original row from the ElementPlacement table
+    cursor.execute("""
+        DELETE FROM ElementPlacement WHERE Id = ?
+    """, (existing_row_id,))
+
 
 
 def add_home_button(pageset_db_filename, reference_db_filename):
     
+    pageId, layouts = get_page_layout_details(pageset_db_filename)
 
-    
     # Connect to the pageset database
     conn_pageset = sqlite3.connect(pageset_db_filename)    
-    
-    
-
+        
     try:
         
         # Check if any buttons already exist in the pageset database
@@ -590,7 +617,7 @@ def add_home_button(pageset_db_filename, reference_db_filename):
         conn_pageset.execute("INSERT INTO CommandSequence SELECT * FROM ref_db.CommandSequence")
 
         # Change the button's Page ID
-        change_home_id(conn_pageset)
+        change_home_id(conn_pageset, pageId, layouts)
 
         # Commit the changes
         conn_pageset.commit()

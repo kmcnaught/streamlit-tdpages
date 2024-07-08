@@ -62,6 +62,7 @@ def add_words_alphabetised(db_empty_path, words_and_symbols, messages=None, incl
     for (pageLayoutId, num_columns, num_rows) in layouts: # placed on every grid layout                                    
         all_available_positions[pageLayoutId] = find_available_positions(db_empty_path, pageLayoutId, num_columns, num_rows) 
 
+
     try:
             
         # Connect to db_empty for insertions
@@ -185,9 +186,8 @@ if st.button('Process Files'):
             # Write the uploaded file's content to the temporary file
             tmp_file.write(db_file.getvalue())
             tmp_file_path = tmp_file.name        
-
-        # fixme: reinstate and make sure it's on all layouts
-        #add_home_button(tmp_file_path, get_static_path('home_button_ref.spb'))
+        
+        add_home_button(tmp_file_path, get_static_path('home_button_ref.spb'))
 
         # Add all alphabetised and colorised buttons        
         add_words_alphabetised(tmp_file_path, words_and_symbols, messages)
