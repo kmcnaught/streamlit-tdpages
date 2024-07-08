@@ -143,11 +143,11 @@ def alternate_column_colors(db_path, column_colors):
     conn.commit()
     conn.close()
 
-def add_button_placement(cursor, pageId, elementRefId, position):
+def add_button_placement(cursor, pageLayoutId, elementRefId, position):
     c, r = position
     cmd = f"""INSERT INTO ElementPlacement 
                 (GridPosition, GridSpan, Visible, ElementReferenceId, PageLayoutId) 
-                VALUES ('{c},{r}', '1,1', '1', '{elementRefId}', '{pageId}')
+                VALUES ('{c},{r}', '1,1', '1', '{elementRefId}', '{pageLayoutId}')
                 """
     cursor.execute(cmd)
 
@@ -233,50 +233,54 @@ def increment_filename(filename):
     return new_filename
 
 
-def add_words_inplace(fname, word_list):
+# def add_words_inplace(fname, word_list):
 
-    maxId, maxRefId= get_highest_button_id(fname)
+#     maxId, maxRefId= get_highest_button_id(fname)
     
-    maxId += 1
-    maxRefId += 1
+#     maxId += 1
+#     maxRefId += 1
 
-    pageId, (ncols, nrows) = get_page_layout_details(fname)
-    available_positions = find_available_positions(fname, pageId, ncols, nrows)
+#     pageId, layouts = get_page_layout_details(fname)
 
-    for i, word in enumerate(word_list):
-        if i < len(available_positions):
-            add_button(fname, pageId, word, maxId, maxRefId, available_positions[i])
-            maxId += 1
-            maxRefId += 1
-        else:
-            print("Error: Ran out of available positions after adding", i, "buttons.")
-            break
+#     for layout in layouts:    
+#         (pageLayoutId, ncols, nrows) = layout
 
-    return fname
+#         available_positions = find_available_positions(fname, pageLayoutId, ncols, nrows)
 
-def add_words(fname, word_list):
+#         for i, word in enumerate(word_list):
+#             if i < len(available_positions):
+#                 add_button(fname, pageId, word, maxId, maxRefId, available_positions[i])                
+#                 maxId += 1
+#                 maxRefId += 1
+#             else:
+#                 print("Error: Ran out of available positions after adding", i, "buttons.")
+#                 break
 
-    new_fname = increment_filename(fname)
-    shutil.copyfile(fname, new_fname)
+#     return fname
+
+# def add_words(fname, word_list):
+
+#     new_fname = increment_filename(fname)
+#     shutil.copyfile(fname, new_fname)
     
-    maxId, maxRefId= get_highest_button_id(fname)
+#     maxId, maxRefId= get_highest_button_id(fname)
 
-    maxId += 1
-    maxRefId += 1
+#     maxId += 1
+#     maxRefId += 1
 
-    pageId, (ncols, nrows) = get_page_layout_details(new_fname)
-    available_positions = find_available_positions(new_fname, pageId, ncols, nrows)
+#     pageId, (ncols, nrows) = get_page_layout_details(new_fname)
+#     available_positions = find_available_positions(new_fname, pageId, ncols, nrows)
 
-    for i, word in enumerate(word_list):
-        if i < len(available_positions):
-            add_button(new_fname, pageId, word, maxId, maxRefId, available_positions[i])
-            maxId += 1
-            maxRefId += 1
-        else:
-            print("Error: Ran out of available positions after adding", i, "buttons.")
-            break
+#     for i, word in enumerate(word_list):
+#         if i < len(available_positions):
+#             add_button(new_fname, pageId, word, maxId, maxRefId, available_positions[i])
+#             maxId += 1
+#             maxRefId += 1
+#         else:
+#             print("Error: Ran out of available positions after adding", i, "buttons.")
+#             break
 
-    return new_fname
+#     return new_fname
 
 
 def get_page_layout_details(db_filename):    
@@ -294,24 +298,27 @@ def get_page_layout_details(db_filename):
         print("Error: Couldn't find Page row")
         return None, None
     if len(rows) != 1:
-        error_message = 'Error: Found multiple novel Titles: ' + ', '.join(row[1] for row in rows)
+        error_message = 'Error: Found multiple Page IDs in file: ' + ', '.join(row[1] for row in rows)
         print(error_message)
         return None, None
     else:
         pageId = rows[0][0]
 
+
     # Retrieve PageLayoutSetting for the unique Id
-    cursor.execute("SELECT PageLayoutSetting FROM PageLayout WHERE Id = ?", (pageId,))
-    setting = cursor.fetchone()[0]
+    # There may be multiple, if there are different layouts available (different grid sizes)
+    cursor.execute("SELECT Id, PageLayoutSetting FROM PageLayout WHERE PageId = ?", (pageId,))
+    settings = cursor.fetchall()
 
-    # Extract num_columns and num_rows from PageLayoutSetting
-    num_columns, num_rows = map(int, setting.split(',')[:2])
-
-    conn.close()
+    # Organize data into a list of (pageLayoutId, num_columns, num_rows)
+    layouts = [(setting[0], *map(int, setting[1].split(',')[:2])) for setting in settings]
     
-    return pageId, (num_columns, num_rows)
+    conn.close()
 
-def find_available_positions(db_filename, pageId, ncols, nrows):
+    return pageId, layouts
+    #return pageId, (num_columns, num_rows)
+
+def find_available_positions(db_filename, pageLayoutId, ncols, nrows):
     
     # Generate all possible positions
     npages = 10 
@@ -328,7 +335,7 @@ def find_available_positions(db_filename, pageId, ncols, nrows):
     # Connect to DB and fetch occupied positions
     conn = sqlite3.connect(db_filename)
     cursor = conn.cursor()
-    cursor.execute("SELECT GridPosition FROM ElementPlacement WHERE PageLayoutId = ?", (pageId,))
+    cursor.execute("SELECT GridPosition FROM ElementPlacement WHERE PageLayoutId = ?", (pageLayoutId,))
     occupied_positions_raw = cursor.fetchall()
         
     # Parse 'r, c' format and convert to list of tuples
@@ -556,9 +563,13 @@ def change_home_id(conn):
 
 def add_home_button(pageset_db_filename, reference_db_filename):
     
+
+    
     # Connect to the pageset database
     conn_pageset = sqlite3.connect(pageset_db_filename)    
     
+    
+
     try:
         
         # Check if any buttons already exist in the pageset database

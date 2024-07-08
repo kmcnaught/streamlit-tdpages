@@ -38,36 +38,47 @@ if text_file is not None and update_title:
     # Display the filename in a text input field, pre-filled with the file name (without extension)
     file_name_input = st.text_input("New pageset name:", value=file_name)    
 
-def add_words_alphabetised(db_empty_path, words_and_symbols, messages=None, include_letter_cells=True):
+
+def get_next_id(cursor, table_name):
     
+    # Query the sqlite_sequence table to find the next ID for the specified table
+    cursor.execute("SELECT seq FROM sqlite_sequence WHERE name=?", (table_name,))
+    result = cursor.fetchone()
+    
+    next_id = 1
+    if result:
+        next_id = result[0] + 1
+    
+    return next_id
+    
+
+def add_words_alphabetised(db_empty_path, words_and_symbols, messages=None, include_letter_cells=True):
+
+    pageId, layouts = get_page_layout_details(db_empty_path)    
+    letter_colors, letter_symbols = get_letter_colours_symbols()    
+
+    # Find available positions on all layouts upfront
+    all_available_positions = {}
+    for (pageLayoutId, num_columns, num_rows) in layouts: # placed on every grid layout                                    
+        all_available_positions[pageLayoutId] = find_available_positions(db_empty_path, pageLayoutId, num_columns, num_rows) 
+
     try:
-        pageId, (num_columns, num_rows) = get_page_layout_details(db_empty_path)
-        available_positions = find_available_positions(db_empty_path, pageId, num_columns, num_rows) 
-                
-        # Retrieve the highest IDs for adding
-        # FIXME: maybe this is better done from sqlite_sequence?
-        max_id_empty, max_ref_id_empty = get_highest_button_id(db_empty_path)        
-        
-        # Calculate the starting IDs for new entries in db_empty
-        next_id = max_id_empty + 1
-        next_ref_id = max_ref_id_empty + 1
-        
+            
         # Connect to db_empty for insertions
         conn_empty = sqlite3.connect(db_empty_path)
         cursor_empty = conn_empty.cursor()
-    
-        letter_colors, letter_symbols = get_letter_colours_symbols()
 
+        # Calculate the starting IDs for new entries in db_empty
+        next_id = get_next_id(cursor_empty, "Button")
+        next_ref_id = get_next_id(cursor_empty, "ElementReference")
+    
         # Make sure words are alphabetised
         words_and_symbols = sorted(words_and_symbols, key=lambda x: x[0].lower())     
 
         pos_i = 0 # keep track of available positions
         current_letter = None
 
-        for i, (word, symbol) in enumerate(words_and_symbols):            
-            if i >= len(available_positions):
-                print("Error: Ran out of available positions after adding", i, "buttons.")
-                break                      
+        for i, (word, symbol) in enumerate(words_and_symbols):                                    
             
             letter = word[0].lower()
             
@@ -83,7 +94,11 @@ def add_words_alphabetised(db_empty_path, words_and_symbols, messages=None, incl
                     add_button(cursor_empty, next_id, next_ref_id, None, letter_symbols[current_letter])
                     add_command_nothing(cursor_empty, next_id)
                     add_element_reference_with_color(cursor_empty, current_letter, pageId, next_ref_id)
-                    add_button_placement(cursor_empty, pageId, next_ref_id, available_positions[pos_i])
+                    for pageLayoutId, available_positions in all_available_positions.items(): # placed on every grid layout
+                        if pos_i >= len(available_positions):
+                            raise ValueError("Ran out of available positions after adding " + i + " buttons on layout "+ pageLayoutId)
+                        add_button_placement(cursor_empty, pageLayoutId, next_ref_id, available_positions[pos_i])
+                        #break
 
                     next_id += 1
                     next_ref_id += 1  
@@ -98,13 +113,17 @@ def add_words_alphabetised(db_empty_path, words_and_symbols, messages=None, incl
             add_button(cursor_empty, next_id, next_ref_id, word, symbol, message)
             add_command_speak_message(cursor_empty, next_id)
             add_element_reference_with_color(cursor_empty, word, pageId, next_ref_id)
-            add_button_placement(cursor_empty, pageId, next_ref_id, available_positions[pos_i])
+            for pageLayoutId, available_positions in all_available_positions.items(): # placed on every grid layout
+                if pos_i >= len(available_positions):
+                    raise ValueError("Ran out of available positions after adding " + i + " buttons on layout "+ pageLayoutId)
+                add_button_placement(cursor_empty, pageLayoutId, next_ref_id, available_positions[pos_i])
+                #break
 
             # Increment IDs for the next iteration
             next_id += 1
             next_ref_id += 1 
             pos_i += 1
-            
+        
         # commit changes
         conn_empty.commit()
     except Exception as e:
@@ -167,7 +186,8 @@ if st.button('Process Files'):
             tmp_file.write(db_file.getvalue())
             tmp_file_path = tmp_file.name        
 
-        add_home_button(tmp_file_path, get_static_path('home_button_ref.spb'))
+        # fixme: reinstate and make sure it's on all layouts
+        #add_home_button(tmp_file_path, get_static_path('home_button_ref.spb'))
 
         # Add all alphabetised and colorised buttons        
         add_words_alphabetised(tmp_file_path, words_and_symbols, messages)
