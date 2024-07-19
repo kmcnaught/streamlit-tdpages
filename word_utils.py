@@ -46,11 +46,17 @@ def remove_plural_duplicates(words):
     
     for word in words:
         # Attempt to convert plural to singular, in case of duplicates we preserve the singular only
-        singular_word = p.singular_noun(word)
-        if singular_word and singular_word in words:
-            new_words.add(singular_word)
-        else:
-            new_words.add(word)
+        added = False
+        try:
+            singular_word = p.singular_noun(word)
+            if singular_word and singular_word in words:
+                new_words.add(singular_word)
+                added = True
+        except: 
+            print("couldn't singularise "+ word)
+        finally:
+            if not added:
+                new_words.add(word)
         
     # Return a list of unique words, preference given to singular forms
     return list(new_words)
