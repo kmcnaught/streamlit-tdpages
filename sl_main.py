@@ -91,19 +91,20 @@ def add_words_alphabetised(db_empty_path, words_and_symbols, messages=None, incl
                 if letter != current_letter:
                     current_letter = letter 
                     
-                    # Add an action-less button for this letter                    
-                    add_button(cursor_empty, next_id, next_ref_id, None, letter_symbols[current_letter])
-                    add_command_nothing(cursor_empty, next_id)
-                    add_element_reference_with_color(cursor_empty, current_letter, pageId, next_ref_id)
-                    for pageLayoutId, available_positions in all_available_positions.items(): # placed on every grid layout
-                        if pos_i >= len(available_positions):
-                            raise ValueError("Ran out of available positions after adding " + i + " buttons on layout "+ pageLayoutId)
-                        add_button_placement(cursor_empty, pageLayoutId, next_ref_id, available_positions[pos_i])
-                        #break
+                    # Add an action-less button for this letter               
+                    if (current_letter in letter_symbols):
+                        add_button(cursor_empty, next_id, next_ref_id, None, letter_symbols[current_letter])
+                        add_command_nothing(cursor_empty, next_id)
+                        add_element_reference_with_color(cursor_empty, current_letter, pageId, next_ref_id)
+                        for pageLayoutId, available_positions in all_available_positions.items(): # placed on every grid layout
+                            if pos_i >= len(available_positions):
+                                raise ValueError("Ran out of available positions after adding " + i + " buttons on layout "+ pageLayoutId)
+                            add_button_placement(cursor_empty, pageLayoutId, next_ref_id, available_positions[pos_i])
+                            #break
 
-                    next_id += 1
-                    next_ref_id += 1  
-                    pos_i += 1
+                        next_id += 1
+                        next_ref_id += 1  
+                        pos_i += 1
 
             #########################################
             # Now add a button for the current word #   
