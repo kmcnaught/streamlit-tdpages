@@ -169,6 +169,8 @@ if st.button('Process Files'):
         # Assuming the text file contains one word per line
         words = text_file.getvalue().decode('utf-8-sig').splitlines()      
         words = remove_plural_duplicates(words)
+        # remove leading/trailing space, and remove empties. 
+        words = [word.strip() for word in words if word.strip()]
         words.sort(key=str.casefold)
 
         # split messages if present
