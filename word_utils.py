@@ -61,6 +61,29 @@ def remove_plural_duplicates(words):
     # Return a list of unique words, preference given to singular forms
     return list(new_words)
 
+def remove_case_duplicates(words):
+    
+    # Set to track seen lowercase words
+    seen = set()
+    
+    # List to store the result
+    final_words = dict()
+    
+    for word in words:
+        # Convert word to lowercase for comparison
+        lower_word = word.lower()
+        
+        # Add the word to the result if the lowercase version is not already present
+        # or if this is a lower case
+        if lower_word not in seen:
+            seen.add(lower_word)
+            final_words[lower_word] = word
+        elif lower_word==word:
+            final_words[lower_word] = word
+
+    return list(final_words.values())
+
+
 def alphabetise_tuples(words):
     # words is list of tuples (word, symbol)
     return sorted(words, key=lambda x: x[0].lower())     

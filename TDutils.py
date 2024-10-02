@@ -9,6 +9,7 @@ import re
 from word_utils import *
 from colour_defs import *
 import streamlit as st
+from wordvec_utils import *
 
 def merge_two_dicts(x, y):
     z = x.copy()   # start with keys and values of x
@@ -478,6 +479,103 @@ def get_static_path(fname):
     fname = os.path.join(os.path.dirname(__file__), 'static/' + fname)
     fname = os.path.abspath(fname)  # Convert to absolute path
     return fname
+
+def keep_most_similar_ID_only(words_symbols_similarity):
+    # If there are any words which share a symbol, remove (set to None) for all 
+    # but the one with the highest similarity
+
+    max_similarity = {}
+
+    # First pass: Determine the highest similarity for each symbol ID
+    for index, (word, symbol_id, similarity) in enumerate(words_symbols_similarity):
+        if symbol_id not in max_similarity or similarity > max_similarity[symbol_id][1]:
+            max_similarity[symbol_id] = (index, similarity)
+
+    # Second pass: Set symbol ID to None for duplicates
+    for index, (word, symbol_id, similarity) in enumerate(words_symbols_similarity):
+        if symbol_id in max_similarity and max_similarity[symbol_id][0] != index:
+            words_symbols_similarity[index] = (word, None, similarity)
+    
+    # Create a new list with only (word, symbolID)
+    words_symbols_only = [(word, symbol_id) for word, symbol_id, _ in words_symbols_similarity]
+    return words_symbols_only
+
+def find_closest_symbol_ids(words, log):
+    
+    db_path = get_static_path('symbols_with_base.sqlite5')
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+
+    try:
+
+        # Function to find the original word's SymbolId in DB (if present)
+        def find_orig_word(word):
+            result = cursor.execute(
+                "SELECT SymbolId FROM FilteredSymbols WHERE Label = ?",
+                (normalize_string(word),)
+            ).fetchone()
+            return result[0] if result else None
+
+        # Local function to find a base word's SymbolId in DB (if present)
+        def find_base_word(word):
+            result = cursor.execute(
+                "SELECT SymbolId FROM FilteredSymbols WHERE BaseWord = ?",
+                (normalize_string(word),)
+            ).fetchone()
+            return result[0] if result else None
+
+        # Prepare intermediate list of best fit for each word
+        output = [] # tuples (word, symbol ID, similarity)
+
+        for word in words:
+            
+            # Look for exact match first, original labels then base
+            result = find_orig_word(word)
+            sim = 1.2
+            
+            if result:
+                with log:
+                    st.write(word + " : " + word + "(" + str(sim) + ")")
+
+            if not result:
+                result = find_base_word(get_base_form(word))            
+                sim = 1.1
+
+                if result:
+                    with log:
+                        st.write(word + " : " + get_base_form(word) + "(" + str(sim) + ")")                
+
+
+            # Otherwise look up semantically similar words        
+            if not result:
+                related_words = find_semantically_related_words_with_similarity(word) 
+
+                for rel_word, sim in related_words:                             
+
+                    result = find_orig_word(rel_word)
+                    
+                    if not result:
+                        result = find_base_word(get_base_form(rel_word))
+
+                    if result is not None:
+                        with log:
+                            st.write(word + " : " + rel_word + "(" + str(sim) + ")")
+                            break
+
+            if result:
+                output.append((word, result, sim))
+            else:
+                output.append((word, None, 0.0))
+
+        # Now process the list to ensure we are not duplicating symbols for different words
+        output = keep_most_similar_ID_only(output)
+
+    finally:
+        # Close the database connection
+        conn.close()    
+
+    return output
+
 
 def find_symbol_ids(words):
     """Find symbol IDs for a list of words."""

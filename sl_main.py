@@ -4,11 +4,11 @@ from io import BytesIO
 import sqlite3
 import tempfile
 import os
-from TDutils import *
-#from jupyter_utils import *
-from colour_defs import *
-from word_utils import *
-from db_utils import *
+
+# defer other imports until asked to do something, so we
+# can give "busy" feedback
+
+loaded_dependencies=False
 
 # Streamlit UI
 st.title('TD Snap pageset creation')
@@ -30,6 +30,9 @@ st.write("By default we use one line per word or phrase in the text file. " +\
 
 different_labels = st.checkbox('Use separate labels + messages', value=False)
 
+# Create an expander for logs
+log_expander = st.expander("Show Logs", expanded=False)
+
 # Check if a file has been uploaded
 if text_file is not None and update_title:
     # Extract the file name without extension
@@ -37,7 +40,6 @@ if text_file is not None and update_title:
     
     # Display the filename in a text input field, pre-filled with the file name (without extension)
     file_name_input = st.text_input("New pageset name:", value=file_name)    
-
 
 def get_next_id(cursor, table_name):
     
@@ -166,22 +168,35 @@ def split_words_messages(words):
 # Button to trigger processing after files are selected
 if st.button('Process Files'):
     if db_file is not None and text_file is not None:
+
+        if not loaded_dependencies:
+            with st.spinner("Processing..."):
+                from TDutils import *            
+                from colour_defs import *
+                from word_utils import *
+                from db_utils import *
+                loaded_dependencies = True
+
         # Assuming the text file contains one word per line
         words = text_file.getvalue().decode('utf-8-sig').splitlines()      
-        words = remove_plural_duplicates(words)
+
         # remove leading/trailing space, and remove empties. 
         words = [word.strip() for word in words if word.strip()]
         words.sort(key=str.casefold)
+
+        # remove too-similar duplicates
+        words = remove_plural_duplicates(words)        
+        words = remove_case_duplicates(words)
 
         # split messages if present
         messages = None
         if different_labels:
             words, messages = split_words_messages(words)
 
-        words_and_symbols = find_symbol_ids(words)
+        words_and_symbols = find_closest_symbol_ids(words, log_expander)
         num_symbols = sum(1 for _, symbol in words_and_symbols if symbol is not None)
 
-        # Example processing: printing the words
+    
         st.write(f"{len(words)} words found with { num_symbols } symbols")
         
         # Create a temporary file
