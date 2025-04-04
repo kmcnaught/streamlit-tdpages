@@ -75,8 +75,18 @@ def add_words_alphabetised(db_empty_path, words_and_symbols, messages=None, incl
         next_id = get_next_id(cursor_empty, "Button")
         next_ref_id = get_next_id(cursor_empty, "ElementReference")
     
-        # Make sure words are alphabetised
-        words_and_symbols = sorted(words_and_symbols, key=lambda x: x[0].lower())     
+        # Make sure words are alphabetised, and order is maintained
+        # for accompanying messages
+        if messages is not None:
+            # Combine words_and_symbols with messages using zip
+            combined = list(zip(words_and_symbols, messages))
+            # Sort based on first element of words_and_symbols
+            combined.sort(key=lambda x: x[0][0].lower())
+            # Unzip back into separate lists
+            words_and_symbols, messages = zip(*combined)
+        else:
+            # If messages is None, just sort words_and_symbols
+            words_and_symbols = sorted(words_and_symbols, key=lambda x: x[0].lower())
 
         pos_i = 0 # keep track of available positions
         current_letter = None
